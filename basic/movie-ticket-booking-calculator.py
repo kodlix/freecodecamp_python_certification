@@ -1,3 +1,8 @@
+'''
+In this workshop, you will practice how to use booleans and conditional statements 
+in Python by building a movie ticket booking calculator.
+'''
+
 base_price = 15
 age = 21
 seat_type = 'Gold'
