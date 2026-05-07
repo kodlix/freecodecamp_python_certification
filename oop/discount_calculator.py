@@ -3,62 +3,76 @@ In this workshop, you are going to build a discount calculator that can apply di
 The system will determine the best price for a customer based on multiple discount
 """
 
-class DiscountStrategy:
-    """Base class for discount strategies."""
-    def apply_discount(self, price):
-        raise NotImplementedError("Subclasses must implement this method")  
-    
-class PercentageDiscount(DiscountStrategy):
-    """Applies a percentage discount to the price."""
-    def __init__(self, percentage):
-        self.percentage = percentage
+from abc import ABC, abstractmethod
 
-    def apply_discount(self, price):
-        return price * (1 - self.percentage / 100)
-    
+class Product:
+    def __init__(self, name: str, price: float) -> None:
+        self.name = name
+        self.price = price
+
+    def __str__(self) -> str:
+        return f'{self.name} - ${self.price}'
+
+class DiscountStrategy(ABC):
+    @abstractmethod
+    def is_applicable(self, product: Product, user_tier: str) -> bool:
+        pass
+
+    @abstractmethod
+    def apply_discount(self, product: Product) -> float:
+        pass
+
+class PercentageDiscount(DiscountStrategy):
+    def __init__(self, percent: int) -> None:
+        self.percent = percent
+
+    def is_applicable(self, product: Product, user_tier: str) -> bool:
+        return self.percent <= 70
+
+    def apply_discount(self, product: Product) -> float:
+        return product.price * (1 - self.percent / 100)
+
 class FixedAmountDiscount(DiscountStrategy):
-    """Applies a fixed amount discount to the price."""
-    def __init__(self, amount):
+    def __init__(self, amount: int) -> None:
         self.amount = amount
 
-    def apply_discount(self, price):
-        return max(0, price - self.amount)  
-    
-    
-class Product:
-    """Represents a product with a name and price."""
-    def __init__(self, name, price):
-        self.name = name
-        self.price = price  
-        
-        
-        
-class DiscountCalculator:
-    """Calculates the best price for a product based on multiple discount strategies."""
-    def __init__(self, product):
-        self.product = product
-        self.discounts = []
+    def is_applicable(self, product: Product, user_tier: str) -> bool:
+        return product.price * 0.9 > self.amount
 
-    def add_discount(self, discount):
-        if not isinstance(discount, DiscountStrategy):
-            raise ValueError("Discount must be an instance of DiscountStrategy")
-        self.discounts.append(discount)
+    def apply_discount(self, product: Product) -> float:
+        return product.price - self.amount
 
-    def calculate_best_price(self):
-        best_price = self.product.price
-        for discount in self.discounts:
-            discounted_price = discount.apply_discount(self.product.price)
-            best_price = min(best_price, discounted_price)
-        return best_price               
-    
-    
-# Example usage
-if __name__ == "__main__":  
-    product = Product("Laptop", 1000)
-    calculator = DiscountCalculator(product)
-    
-    calculator.add_discount(PercentageDiscount(10))  # 10% off
-    calculator.add_discount(FixedAmountDiscount(150))  # $150 off
-    
-    best_price = calculator.calculate_best_price()
-    print(f"The best price for {product.name} is: ${best_price:.2f}")   
+class PremiumUserDiscount(DiscountStrategy):
+    def is_applicable(self, product: Product, user_tier: str) -> bool:
+        return user_tier.lower() == 'premium'
+
+    def apply_discount(self, product: Product) -> float:
+        return product.price * 0.8
+
+class DiscountEngine:
+    def __init__(self, strategies: list[DiscountStrategy]) -> None:
+        self.strategies = strategies
+
+    def calculate_best_price(self, product: Product, user_tier: str) -> float:
+        prices = [product.price]
+
+        for strategy in self.strategies:
+            if strategy.is_applicable(product, user_tier):
+                discounted = strategy.apply_discount(product)
+                prices.append(discounted)
+
+        return min(prices)
+
+if __name__ == '__main__':
+    product = Product('Wireless Mouse', 50.0)
+    user_tier = 'Premium'
+
+    strategies = [
+        PercentageDiscount(10),
+        FixedAmountDiscount(5),
+        PremiumUserDiscount()
+    ]
+
+    engine = DiscountEngine(strategies)
+    best_price = engine.calculate_best_price(product, user_tier)
+    print(f"Best price for {product.name} for {user_tier} user: ${best_price:.2f}")
